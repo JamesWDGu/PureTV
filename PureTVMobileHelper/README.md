@@ -95,7 +95,7 @@
 | --- | --- |
 | 手机 | Android 6.0（API 23）及以上；无线配对需要 Android 9+ |
 | 电视 | 已开启网络调试 / ADB 调试，且与手机连接同一个路由器 |
-| 构建 | JDK 17+、Android SDK Platform 37、Build Tools 36+ |
+| 构建 | JDK 25（单元测试需 Java 25）、Android SDK Platform 37、Build Tools 36+ |
 
 > 在电视“开发者选项”中查找“网络调试”或“ADB 调试”。仅开启“USB 调试”不一定能通过网络
 > 连接；部分电视重启后需要重新开启。连接端口以电视显示的为准，常见为 `5555`。使用 Android 11

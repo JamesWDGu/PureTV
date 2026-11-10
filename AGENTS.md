@@ -32,7 +32,8 @@
 - 只保留 Compose 编译器插件 `org.jetbrains.kotlin.plugin.compose`，版本必须与 Kotlin 对齐。
 - Kadb 的配对依赖 `com.github.Flyfish233:spake2-java` 发布在 JitPack。**不要删除**
   `settings.gradle.kts` 中的 `maven("https://jitpack.io")`。
-- 构建需要 JDK 17+、Android SDK Platform 37、Build Tools 36+。
+- 构建与测试需要 JDK 25：Kadb 2.1.5 的 JVM 字节码为 Java 25，`testDebugUnitTest` 必须在
+  JDK 25 上运行（Android 运行时不受影响）；另需 Android SDK Platform 37、Build Tools 36+。
 - `targetSdk` 保持 36。升级到 37（Android 17）前必须实现 `ACCESS_LOCAL_NETWORK` 运行时权限，
   否则 mDNS 发现、端口扫描和局域网 ADB 连接都会被系统阻断；详见第 8 节。
 
