@@ -54,11 +54,18 @@ jobs:
 
       - name: Ensure Android SDK packages
         run: |
-          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          [ -x "$SDKMANAGER" ] || SDKMANAGER=$(command -v sdkmanager)
           yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
-          "$SDKMANAGER" --install "platform-tools" "build-tools;36.0.0" >/dev/null
-          "$SDKMANAGER" --install "platforms;android-37" >/dev/null 2>&1 ||
-            "$SDKMANAGER" --install "platforms;android-37.1" >/dev/null
+          "$SDKMANAGER" --install "platform-tools" >/dev/null
+          "$SDKMANAGER" --install "build-tools;37.0.0" >/dev/null 2>&1 || true
+          "$SDKMANAGER" --install "build-tools;36.0.0" >/dev/null 2>&1 || true
+          "$SDKMANAGER" --install "platforms;android-37.0" >/dev/null 2>&1 || true
+          "$SDKMANAGER" --install "platforms;android-37.1" >/dev/null 2>&1 || true
+          ls "$ANDROID_HOME/platforms" | grep -q '^android-37' || {
+            echo "::error::Android SDK platform 37 is unavailable on this runner."
+            exit 1
+          }
 
       - name: Test and build signed release
         working-directory: PureTVMobileHelper
