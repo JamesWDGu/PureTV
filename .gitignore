@@ -1,0 +1,35 @@
+# Gradle / Android build outputs
+**/build/
+**/.gradle/
+**/.kotlin/
+**/captures/
+**/screenshots/
+
+# Local SDK / IDE configuration (contains machine-specific absolute paths)
+**/local.properties
+.idea/
+**/*.iml
+.DS_Store
+Thumbs.db
+
+# Signing material: never commit
+*.jks
+*.keystore
+*.p12
+**/secrets.properties
+.env
+.env.*
+!.env.example
+
+# Build artifacts
+*.apk
+*.aab
+*.apks
+*.xapk
+*.hprof
+
+# Logs and local verification output
+*.log
+
+# Keep the Gradle wrapper jar; it is required for reproducible builds.
+!**/gradle/wrapper/gradle-wrapper.jar
