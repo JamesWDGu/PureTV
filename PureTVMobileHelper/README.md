@@ -89,6 +89,14 @@
     <td align="center"><sub>遥控输入：手动/实时输入，遥控、数字和字母面板</sub></td>
     <td align="center"><sub>重命名设备：自定义名称或恢复自动识别名称</sub></td>
   </tr>
+  <tr>
+    <td width="50%" valign="top"><img width="100%" src="docs/images/15-update.png" alt="发现新版本"></td>
+    <td width="50%"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>版本更新：当前/新版本、更新内容、下载进度与安装入口</sub></td>
+    <td></td>
+  </tr>
 </table>
 
 ## 环境要求
@@ -144,7 +152,8 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 `.github/workflows/release.yml` 在推送到 `release` 分支、或从该分支手动触发时，运行单元测试、构建
 签名版 Release APK，并发布正式 Release：tag 为 `v<版本名>`（重跑附加 `-a<次数>`），资产名为
 `PureTV-<版本名>.apk`，说明取自 `CHANGELOG.md` 对应章节。版本号来自 `gradle.properties`，
-因此每次发布前需按上面的规则递增。这样的命名可直接被 Obtainium 等工具识别。
+因此每次发布前需按上面的规则递增。这样的命名可直接被 Obtainium 等工具识别：在 Obtainium 中添加
+本仓库地址，选择名称以 `PureTV-` 开头的 APK 即可。
 
 在仓库 Settings → Secrets and variables → Actions 添加（建议放入 `release` Environment）：
 
