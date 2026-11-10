@@ -137,6 +137,8 @@ cd PureTVMobileHelper
   构建签名 APK 并创建预发布 Release。签名由 `RELEASE_KEYSTORE_BASE64` 等 Secrets 注入，**禁止**
   为该工作流添加 `pull_request` 触发；CI 用 `-PappVersionCode=<run_number>` 递增版本号。
   所有 `uses:` 必须固定到完整 commit SHA（保留版本注释），仓库可启用 SHA 固定策略。
+  发布任务限制在 `release` 分支并绑定 `release` Environment；签名 Secrets 放 Environment，
+  不要放仓库级，同时关闭 fork 工作流选项。
 - `FocusedInputTextTest`、`RemoteTextEditTest` 使用 JUnit 4.13.2 做本地 JVM 回归测试，覆盖
   提示语误读、真实正文、元数据不匹配、待插入字符校验与变化范围；没有 instrumentation 测试。
   ADB/UI 行为仍需实际运行或 emulator smoke test。

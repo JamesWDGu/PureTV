@@ -128,11 +128,11 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## 自动发布
 
-`.github/workflows/release.yml` 在推送到 `release` 分支或手动触发时，运行单元测试、构建
+`.github/workflows/release.yml` 在推送到 `release` 分支、或从该分支手动触发时，运行单元测试、构建
 签名版 Release APK，并以 `v<版本名>-b<版本号>` 创建预发布 Release。版本号使用
 GitHub Actions 的 `run_number` 递增，可通过 `-PappVersionCode=...` 在本地复现。
 
-在仓库 Settings → Secrets and variables → Actions 添加：
+在仓库 Settings → Secrets and variables → Actions 添加（建议放入 `release` Environment）：
 
 | Secret | 内容 |
 |---|---|
@@ -143,6 +143,16 @@ GitHub Actions 的 `run_number` 递增，可通过 `-PappVersionCode=...` 在本
 
 签名材料只写入 runner 的临时目录，不进入日志或提交。该工作流不使用 `pull_request` 触发，
 避免外部贡献者获取签名密钥。
+
+任务只在 `release` 分支执行（`if: github.ref_name == 'release'`），其他分支或手动运行都会被跳过。
+在 Settings → Environments 创建 `release` 环境，并设置：
+
+- Deployment branches：仅 `release`；
+- Required reviewers：至少勾选自己（发布前需人工批准）；
+- 将四个 Secret 放进该 Environment，而不是仓库级。
+
+再关闭 Settings → Actions → General 中的 fork 工作流选项（运行 fork 的 workflows、向 fork 工作流
+发送写令牌）。这样只有拥有仓库写权限的人才能发起发布，且密钥只在受保护环境中解密。
 
 ## 使用
 

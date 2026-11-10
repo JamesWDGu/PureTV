@@ -17,6 +17,9 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # Only the protected release branch may run this job; others get no secrets.
+    if: github.ref_name == 'release'
+    environment: release
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
