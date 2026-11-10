@@ -134,7 +134,7 @@ class AppUpdater(private val context: Context) {
         val asset = chosen ?: return null
         return AppUpdate(
             versionName = version,
-            notes = root.optString("body").trim(),
+            notes = plainReleaseNotes(root.optString("body")),
             apkUrl = asset.optString("browser_download_url"),
             apkSize = asset.optLong("size"),
         )

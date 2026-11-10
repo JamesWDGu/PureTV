@@ -44,6 +44,26 @@ class VersionInfoTest {
     }
 
     @Test
+    fun releaseNotesAreShownWithoutMarkdownMarkers() {
+        val notes = plainReleaseNotes(
+            """
+            ## 新增
+
+            - **重点**：支持更新
+            - 修复 `崩溃`
+
+            ---
+            """.trimIndent()
+        )
+        assertFalse(notes.contains("#"))
+        assertFalse(notes.contains("**"))
+        assertFalse(notes.contains("`"))
+        assertFalse(notes.contains("---"))
+        assertTrue(notes.contains("重点：支持更新"))
+        assertTrue(notes.contains("修复 崩溃"))
+    }
+
+    @Test
     fun normalizesNameWithoutPrefix() {
         assertEquals("1.1.0", parseAppVersion("v1.1.0")?.name)
     }

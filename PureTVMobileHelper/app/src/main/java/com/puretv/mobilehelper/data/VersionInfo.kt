@@ -29,3 +29,21 @@ internal fun isNewerVersion(remote: String?, current: String?): Boolean {
     val currentVersion = parseAppVersion(current) ?: return false
     return remoteVersion > currentVersion
 }
+
+/** Release bodies are Markdown; the dialog shows plain text. */
+internal fun plainReleaseNotes(markdown: String): String {
+    val output = ArrayList<String>()
+    var previousBlank = false
+    for (raw in markdown.lineSequence()) {
+        var line = raw.trim()
+        if (line == "---" || line == "***" || line == "___") continue
+        line = line.replace(Regex("""^#{1,6}\s+"""), "")
+        line = line.replace("**", "").replace("__", "").replace("`", "")
+        val blank = line.isEmpty()
+        if (blank && (previousBlank || output.isEmpty())) continue
+        output.add(line)
+        previousBlank = blank
+    }
+    while (output.isNotEmpty() && output.last().isEmpty()) output.removeAt(output.lastIndex)
+    return output.joinToString("\n")
+}
