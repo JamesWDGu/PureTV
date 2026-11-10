@@ -129,7 +129,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 ## 自动发布
 
 `.github/workflows/release.yml` 在推送到 `release` 分支、或从该分支手动触发时，运行单元测试、构建
-签名版 Release APK，并以 `v<版本名>-b<版本号>` 创建预发布 Release。版本号使用
+签名版 Release APK，并以 `v<版本名>-b<版本号>` 创建预发布 Release（重跑附加 `-a<次数>`）。版本号使用
 GitHub Actions 的 `run_number` 递增，可通过 `-PappVersionCode=...` 在本地复现。
 
 在仓库 Settings → Secrets and variables → Actions 添加（建议放入 `release` Environment）：
