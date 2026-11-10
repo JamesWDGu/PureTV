@@ -85,14 +85,29 @@ jobs:
           "$apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk | grep -q "CN=PureTV Mobile Helper"
           echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
           echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
-          echo "tag=v${version_name}-b${version_code}" >> "$GITHUB_OUTPUT"
+          tag="v${version_name}-b${version_code}"
+          if [ "${GITHUB_RUN_ATTEMPT}" != "1" ]; then
+            tag="${tag}-a${GITHUB_RUN_ATTEMPT}"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
-      - name: Publish GitHub Release
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
-        with:
-          tag_name: ${{ steps.meta.outputs.tag }}
-          name: PureTV ${{ steps.meta.outputs.version_name }} (build ${{ steps.meta.outputs.version_code }})
-          files: PureTVMobileHelper/app/build/outputs/apk/release/app-release.apk
-          fail_on_unmatched_files: true
-          generate_release_notes: true
-          prerelease: true
+      - name: Create draft release with APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          VERSION_NAME: ${{ steps.meta.outputs.version_name }}
+          VERSION_CODE: ${{ steps.meta.outputs.version_code }}
+        run: |
+          gh release create "$TAG" \
+            "PureTVMobileHelper/app/build/outputs/apk/release/app-release.apk" \
+            --target "$GITHUB_SHA" \
+            --title "PureTV ${VERSION_NAME} (build ${VERSION_CODE})" \
+            --generate-notes \
+            --prerelease \
+            --draft
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: gh release edit "$TAG" --draft=false --prerelease
