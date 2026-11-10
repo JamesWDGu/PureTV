@@ -106,9 +106,16 @@
 ```bash
 cd PureTVMobileHelper
 ./gradlew :app:assembleDebug
+./gradlew :app:assembleRelease
 ```
 
-产物：`app/build/outputs/apk/debug/app-debug.apk`
+产物：
+
+- Debug：`app/build/outputs/apk/debug/app-debug.apk`
+- Release：本机存在 `signing.properties` 时为已签名的 `app/build/outputs/apk/release/app-release.apk`，
+  否则为未签名的 `app-release-unsigned.apk`。
+
+签名密钥与 `signing.properties` 只保存在本机，不进入仓库；更换签名后需卸载旧版再安装。
 
 安装到手机：
 

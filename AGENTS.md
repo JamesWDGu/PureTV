@@ -7,8 +7,7 @@
 - `PureTVMobileHelper/` 是当前唯一已实现的模块：Android 手机客户端，通过局域网 ADB 连接
   Android TV，管理 TV 应用，核心功能是发现、安装、冻结/解冻、卸载 APK，以及调整 NTP /
   Captive Portal。
-- `PureTVDesktop/`、`PureTVHelper/`、`PureTVStore/` 目前是空目录/占位目录。不要根据目录名
-  猜测功能，也不要把实现错误地放进这些目录。
+- `PureTVStore/` 目前是空目录/占位目录。不要根据目录名猜测功能，也不要把实现错误地放进该目录。
 - 应用 ID：`com.puretv.mobilehelper`，界面语言为简体中文。
 - 技术栈：Kotlin + Jetpack Compose Material 3，单 Activity + ViewModel，无 Navigation 库。
 - ADB 协议库：[Kadb](https://github.com/flyfishxu/Kadb) 2.1.5。**不要**改为调用外部 `adb`
@@ -130,8 +129,10 @@ cd PureTVMobileHelper
 ```
 
 - Debug 产物：`app/build/outputs/apk/debug/app-debug.apk`
-- Release 产物未签名：`app/build/outputs/apk/release/app-release-unsigned.apk`；签名配置
-  **不要**提交到仓库。
+- Release：本机存在 `PureTVMobileHelper/signing.properties` 时输出已签名的
+  `app/build/outputs/apk/release/app-release.apk`；缺失时回退为未签名的
+  `app-release-unsigned.apk`。`signing.properties`、keystore 与密码**不要**提交到仓库；
+  本机 keystore 默认位于 `~/.android/keystores/puretv-release.jks`（alias `puretv`）。
 - `FocusedInputTextTest`、`RemoteTextEditTest` 使用 JUnit 4.13.2 做本地 JVM 回归测试，覆盖
   提示语误读、真实正文、元数据不匹配、待插入字符校验与变化范围；没有 instrumentation 测试。
   ADB/UI 行为仍需实际运行或 emulator smoke test。
