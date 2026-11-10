@@ -2,6 +2,7 @@
 .gradle/
 .kotlin/
 local.properties
+signing/
 signing.properties
 .idea/
 .DS_Store

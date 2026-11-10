@@ -5,9 +5,9 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-/** Local-only credentials; signing.properties is untracked and never committed. */
+/** Local-only credentials; signing/ is untracked and never committed. */
 val signingProperties = Properties().apply {
-    val localFile = rootProject.file("signing.properties")
+    val localFile = rootProject.file("signing/signing.properties")
     if (localFile.exists()) localFile.inputStream().use(::load)
 }
 

@@ -16,6 +16,8 @@ Thumbs.db
 *.jks
 *.keystore
 *.p12
+**/signing/
+**/signing.properties
 **/secrets.properties
 .env
 .env.*

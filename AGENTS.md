@@ -129,10 +129,10 @@ cd PureTVMobileHelper
 ```
 
 - Debug 产物：`app/build/outputs/apk/debug/app-debug.apk`
-- Release：本机存在 `PureTVMobileHelper/signing.properties` 时输出已签名的
+- Release：本机存在 `PureTVMobileHelper/signing/signing.properties` 时输出已签名的
   `app/build/outputs/apk/release/app-release.apk`；缺失时回退为未签名的
-  `app-release-unsigned.apk`。`signing.properties`、keystore 与密码**不要**提交到仓库；
-  本机 keystore 默认位于 `~/.android/keystores/puretv-release.jks`（alias `puretv`）。
+  `app-release-unsigned.apk`。`signing/`、keystore 与密码**不要**提交到仓库；签名目录包含
+  `puretv-release.jks` 和 `signing.properties`，整体备份即可。
 - `FocusedInputTextTest`、`RemoteTextEditTest` 使用 JUnit 4.13.2 做本地 JVM 回归测试，覆盖
   提示语误读、真实正文、元数据不匹配、待插入字符校验与变化范围；没有 instrumentation 测试。
   ADB/UI 行为仍需实际运行或 emulator smoke test。

@@ -112,10 +112,11 @@ cd PureTVMobileHelper
 产物：
 
 - Debug：`app/build/outputs/apk/debug/app-debug.apk`
-- Release：本机存在 `signing.properties` 时为已签名的 `app/build/outputs/apk/release/app-release.apk`，
+- Release：本机存在 `signing/signing.properties` 时为已签名的 `app/build/outputs/apk/release/app-release.apk`，
   否则为未签名的 `app-release-unsigned.apk`。
 
-签名密钥与 `signing.properties` 只保存在本机，不进入仓库；更换签名后需卸载旧版再安装。
+签名密钥与 `signing.properties` 一起放在 `signing/` 目录（含 `puretv-release.jks`），只保存在本机、
+整个目录都被 Git 忽略；备份该目录即可。更换签名后需卸载旧版再安装。
 
 安装到手机：
 
