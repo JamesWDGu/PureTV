@@ -126,6 +126,24 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 本地读回解析回归测试：`./gradlew :app:testDebugUnitTest`（JUnit 4.13.2）。
 
+## 自动发布
+
+`.github/workflows/release.yml` 在推送到 `release` 分支或手动触发时，运行单元测试、构建
+签名版 Release APK，并以 `v<版本名>-b<版本号>` 创建预发布 Release。版本号使用
+GitHub Actions 的 `run_number` 递增，可通过 `-PappVersionCode=...` 在本地复现。
+
+在仓库 Settings → Secrets and variables → Actions 添加：
+
+| Secret | 内容 |
+|---|---|
+| `RELEASE_KEYSTORE_BASE64` | `base64 -i signing/puretv-release.jks` 的输出 |
+| `RELEASE_STORE_PASSWORD` | keystore 密码 |
+| `RELEASE_KEY_ALIAS` | `puretv` |
+| `RELEASE_KEY_PASSWORD` | 密钥密码 |
+
+签名材料只写入 runner 的临时目录，不进入日志或提交。该工作流不使用 `pull_request` 触发，
+避免外部贡献者获取签名密钥。
+
 ## 使用
 
 1. 手机与电视连接同一个 Wi-Fi 或路由器。
