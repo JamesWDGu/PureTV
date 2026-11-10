@@ -51,6 +51,7 @@ import com.puretv.mobilehelper.ui.ConnectionUiState
 import com.puretv.mobilehelper.ui.ErrorPanel
 import com.puretv.mobilehelper.ui.SectionTitle
 import com.puretv.mobilehelper.ui.UiState
+import com.puretv.mobilehelper.ui.UpdateUiState
 import com.puretv.mobilehelper.ui.formatTimestamp
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,6 +69,7 @@ fun HomeScreen(
     onPairDiscovered: (host: String, port: Int) -> Unit,
     onRenameDevice: (SavedDevice) -> Unit,
     onRemoveSavedDevice: (SavedDevice) -> Unit,
+    onCheckUpdate: () -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -127,6 +129,11 @@ fun HomeScreen(
                         onDelete = { onRemoveSavedDevice(device) },
                     )
                 }
+            }
+
+            item {
+                Spacer(Modifier.height(4.dp))
+                VersionCard(state.update, onCheckUpdate)
             }
 
             item {
@@ -299,6 +306,39 @@ private fun SavedDeviceRow(
             }
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = "删除")
+            }
+        }
+    }
+}
+
+@Composable
+private fun VersionCard(update: UpdateUiState, onCheckUpdate: () -> Unit) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("PureTV 手机助手", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    "版本 ${update.currentVersion.ifBlank { "未知" }}（${update.currentVersionCode}）",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            TextButton(onClick = onCheckUpdate, enabled = !update.checking) {
+                if (update.checking) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Text("检查更新")
+                }
             }
         }
     }

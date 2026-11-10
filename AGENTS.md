@@ -46,6 +46,8 @@
 | `data/AdbRepository.kt` | Kadb 封装：连接、配对、设备信息、包列表/详情、安装、冻结/解冻、卸载、启动、强停 |
 | `data/FocusedInputText.kt` | 聚焦可编辑节点解析，与当前输入法 hint/包名核验；可疑内容拒绝回填 |
 | `data/RemoteTextEdit.kt` | 实时输入变化范围与可打印 ASCII 预检，必须在任何 DEL 之前完成 |
+| `data/VersionInfo.kt` | 版本号解析、比较与 `versionCode` 推导规则 |
+| `data/AppUpdater.kt` | 读取 GitHub 最新 Release、带进度下载 APK、提供安装 Intent |
 | `data/LanDiscovery.kt` | 用户触发的 mDNS 发现 + 私有 IPv4 `/24` 的 5555 端口扫描 |
 | `data/NetworkControl.kt` | NTP / Captive Portal 设置模型、预设列表、匹配规则 |
 | `data/NetworkSpeedTest.kt` | 手机侧 SNTP / HTTP 测速实现 |
@@ -63,6 +65,7 @@
 | `ui/screens/CaptivePortalControlPage.kt` | 联网检测功能页：当前/原设置、可选检测地址、测速、应用/恢复 |
 | `ui/screens/RemoteInputControlPage.kt` | 遥控输入功能页：独立的手动发送/实时输入模式、遥控按键 |
 | `ui/screens/RemoteKeypad.kt` | 遥控/数字/字母面板、大小写与空格/删除、系统按键轻震 |
+| `ui/UpdateDialog.kt` | 更新提示框：当前/新版本、更新说明、下载进度与安装入口 |
 | `ui/screens/DeviceScreen.kt` | 设备信息、控制面板入口、安装卡片、应用列表、冻结状态、详情 BottomSheet |
 | `ui/theme/Theme.kt` | 自定义明暗色板，包含 `surfaceContainer*` |
 
@@ -115,6 +118,10 @@
     所有键名必须进入 `INPUT_KEYS` 白名单。直接按键先等待本轮文字发送完成；改变光标/焦点的按键
     会暂停实时输入，音量键不暂停，避免继续用旧位置改字。
     原生按键按点击顺序排队；文字模式切换不能丢弃已接受的按键，仅连接对象变化才作废旧按键。
+15. 应用更新：启动时异步检查一次 GitHub `releases/latest`，只提示比当前 `versionName` 更新的正式
+    Release；手动“检查更新”才显示无更新/失败提示。下载在独立协程中流式写入
+    `cacheDir/updates/PureTV-<版本>.apk` 并回报进度，界面不阻塞；下载完成后经 `FileProvider`
+    调用系统安装器，缺少“安装未知应用”权限时先跳系统设置。不得静默安装或后台自动安装。
 
 UI 事件通过 `UiEvent`（`Message` / `Paired`）发给 `PureTvApp` 的 Snackbar。详情 BottomSheet
 中的启动/强停/冻结/解冻操作必须先关闭 Sheet，否则 Snackbar 会被模态层遮挡。
@@ -135,8 +142,9 @@ cd PureTVMobileHelper
   `app-release-unsigned.apk`。`signing/`、keystore 与密码**不要**提交到仓库；签名目录包含
   `puretv-release.jks` 和 `signing.properties`，整体备份即可。
 - GitHub Actions：`.github/workflows/release.yml` 在 `release` 分支推送或手动触发时运行单元测试、
-  构建签名 APK 并创建预发布 Release。签名由 `RELEASE_KEYSTORE_BASE64` 等 Secrets 注入，**禁止**
-  为该工作流添加 `pull_request` 触发；CI 用 `-PappVersionCode=<run_number>` 递增版本号。
+  构建签名 APK 并发布正式 Release。签名由 `RELEASE_KEYSTORE_BASE64` 等 Secrets 注入，**禁止**
+  为该工作流添加 `pull_request` 触发。tag 为 `v<versionName>`，资产名为
+  `PureTV-<versionName>.apk`，说明取自 `CHANGELOG.md` 对应章节。
   所有 `uses:` 必须固定到完整 commit SHA（保留版本注释），仓库可启用 SHA 固定策略。
   发布任务限制在 `release` 分支并绑定 `release` Environment；签名 Secrets 放 Environment，
   不要放仓库级，同时关闭 fork 工作流选项。
@@ -228,6 +236,11 @@ README 界面预览图必须使用模拟器/占位数据并脱敏后放到 `docs
 - 遥控输入：`input keyevent` 只允许 `INPUT_KEYS` 白名单；`input text` 必须 shellQuote 且空格
   编码 `%s`。手动发送与实时输入完全独立，读取不得触发发送或设置实时基线。实时输入只重放
   本轮变化尾部，不得整框清空重输；字符预检必须先于删除，失败时不展示原始堆栈。
+- 版本号只在 `PureTVMobileHelper/gradle.properties` 的 `appVersionName` 修改；`versionCode` 固定按
+  `MAJOR × 10000 + MINOR × 100 + PATCH` 推导。修复递增 PATCH、功能递增 MINOR、不兼容递增 MAJOR；
+  发布前同步更新 `CHANGELOG.md` 的对应章节。
+- 更新检查与下载必须异步，不阻塞连接、应用管理和遥控；自动检查失败静默，只有手动检查才提示。
+  只接受 `PureTV-<版本>.apk`（或 Release 中唯一 APK），安装必须由用户经系统安装器确认。
 - 测速在手机侧执行，UI 必须明确标注“不代表 TV 的代理或实际链路”。NTP 使用 SNTP UDP/123，
   Captive Portal 使用 HTTPS GET 并以 204 为成功；超时/非 204 要显示为失败或状态码。
 - 测速结果只保存在 `NetworkControlUiState.speedTests` 内存中；离开进程即丢失，不上传。
@@ -245,9 +258,11 @@ README 界面预览图必须使用模拟器/占位数据并脱敏后放到 `docs
 - 错误提示集中在 `FriendlyError.kt`，不要在 UI 里散落 `e.message`。
 - `appsRequestId` / `detailsRequestId` 用于防止旧协程覆盖新状态；重构时保留等价保护。
 - 保留 `allowBackup="false"`、`dataExtractionRules` 排除规则和最小权限（目前为
-  `INTERNET` + `ACCESS_NETWORK_STATE`）。不要为局域网发现新增位置、Wi-Fi 扫描等权限。
+  `INTERNET` + `ACCESS_NETWORK_STATE` + `REQUEST_INSTALL_PACKAGES`）。后者只用于安装用户下载的
+  应用更新，仍由系统安装器确认；不要为局域网发现新增位置、Wi-Fi 扫描等权限。
 - 不要新增遥测、崩溃上报、广告 SDK 或除“连接用户填写的 TV、用户主动触发局域网发现、用户点击
-  测速产生的 NTP/HTTPS 请求”之外的网络请求。发现与测速结果只保存在内存，不上传。
+  测速产生的 NTP/HTTPS 请求、检查应用更新与下载更新包”之外的网络请求。发现与测速结果只保存在
+  内存，不上传。
 - 不要加 `QUERY_ALL_PACKAGES`；包列表通过 TV 端 `pm list packages` 获取。
 
 ## 6. ADB / 配对行为说明

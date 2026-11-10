@@ -22,6 +22,8 @@
   数字、字母、空格、删除和确定会直接操作电视，既不填入手机文字框，也不需要点发送。
   实际输入和大小写由电视当前界面、输入法处理。“大小写”用于切换电视键盘的大写锁定。
   按键有轻震反馈，是否震动跟随手机系统的触感设置。
+- **版本与更新**：首页显示当前版本，可手动检查更新；启动时自动检查一次。发现新版本时展示
+  当前版本、新版本和更新内容，下载带进度，完成后调用系统安装器确认安装。
 - **一键测速**：在自动校时或联网检测页比较可选地址的响应速度；结果会说明是否通过及返回码。
   测试在手机上进行，不代表电视实际能否上网，不会自动运行，退出应用后不保留结果。
 - **只在本机保存**：电视的地址、名称、原设置及连接授权信息保存在手机上，不会上传。
@@ -126,11 +128,23 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 本地读回解析回归测试：`./gradlew :app:testDebugUnitTest`（JUnit 4.13.2）。
 
+## 版本规则
+
+版本号格式为 `MAJOR.MINOR.PATCH`，只在 `gradle.properties` 的 `appVersionName` 修改；
+`versionCode` 自动推导为 `MAJOR × 10000 + MINOR × 100 + PATCH`。
+
+- 修复问题：递增 PATCH，例如 `1.1.0 → 1.1.1`；
+- 新增功能：递增 MINOR 并清零 PATCH，例如 `1.1.1 → 1.2.0`；
+- 不兼容变更：递增 MAJOR 并清零其余位，例如 `1.2.0 → 2.0.0`。
+
+发布前在 `CHANGELOG.md` 增加对应版本章节，Release 说明会取该章节。
+
 ## 自动发布
 
 `.github/workflows/release.yml` 在推送到 `release` 分支、或从该分支手动触发时，运行单元测试、构建
-签名版 Release APK，并以 `v<版本名>-b<版本号>` 创建预发布 Release（重跑附加 `-a<次数>`）。版本号使用
-GitHub Actions 的 `run_number` 递增，可通过 `-PappVersionCode=...` 在本地复现。
+签名版 Release APK，并发布正式 Release：tag 为 `v<版本名>`（重跑附加 `-a<次数>`），资产名为
+`PureTV-<版本名>.apk`，说明取自 `CHANGELOG.md` 对应章节。版本号来自 `gradle.properties`，
+因此每次发布前需按上面的规则递增。这样的命名可直接被 Obtainium 等工具识别。
 
 在仓库 Settings → Secrets and variables → Actions 添加（建议放入 `release` Environment）：
 
@@ -275,6 +289,8 @@ docs/images/                    # README 界面预览截图
   之前被拦截。其他输入错误会暂停实时输入，请核对电视内容后切换模式重新开始。
 - 读取电视文字需要应用提供可核对的输入框信息。读到提示语、正文恰好与提示语相同，或无法
   核对输入框时，不覆盖手机草稿，也不会自动把它当作空白输入框。
+- 自动更新依赖 GitHub 可访问；网络受限时启动检查会静默跳过，可稍后手动重试。更新下载的是
+  与当前签名一致的正式 Release，系统可能要求先允许“安装未知应用”。
 - “原设置”是首次使用控制面板时记录的值，不是出厂默认值；只保存在这台手机的设备记录中。
 - 所有设备相关数据（连接信息与 NTP/Captive Portal 默认基线）统一存储在 `DeviceStore` /
   `puretv_devices.xml`；不要为新的设备字段另建 Preferences 文件。

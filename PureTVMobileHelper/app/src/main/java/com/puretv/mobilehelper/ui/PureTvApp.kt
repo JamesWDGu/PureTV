@@ -40,6 +40,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.puretv.mobilehelper.data.AppUpdater
 import com.puretv.mobilehelper.data.InstallProgress
 import com.puretv.mobilehelper.data.InstallStage
 import com.puretv.mobilehelper.data.InstalledApp
@@ -61,6 +62,8 @@ fun PureTvApp(viewModel: AppViewModel) {
     var pairingInitialConnectPort by rememberSaveable { mutableStateOf("5555") }
     var renameTargetId by rememberSaveable { mutableStateOf<String?>(null) }
     val screen = Screen.valueOf(screenName)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val appUpdater = remember { AppUpdater(context) }
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -82,6 +85,20 @@ fun PureTvApp(viewModel: AppViewModel) {
                 is UiEvent.Paired -> {
                     showPairingDialog = false
                     snackbarHostState.showSnackbar("配对成功，正在连接电视…")
+                }
+
+                is UiEvent.InstallPackage -> {
+                    if (!appUpdater.canInstallPackages()) {
+                        runCatching { context.startActivity(appUpdater.unknownSourcesSettingsIntent()) }
+                        snackbarHostState.showSnackbar("请允许安装未知应用，然后返回点击“安装更新”。")
+                    } else {
+                        val launched = runCatching {
+                            context.startActivity(appUpdater.installIntent(event.file))
+                        }.isSuccess
+                        if (!launched) {
+                            snackbarHostState.showSnackbar("无法打开系统安装界面，请稍后重试。")
+                        }
+                    }
                 }
             }
         }
@@ -142,6 +159,7 @@ fun PureTvApp(viewModel: AppViewModel) {
             },
             onRenameDevice = { renameTargetId = it.id },
             onRemoveSavedDevice = viewModel::removeSavedDevice,
+            onCheckUpdate = { viewModel.checkForUpdates(manual = true) },
         )
 
         Screen.Device -> DeviceScreen(
@@ -221,6 +239,15 @@ fun PureTvApp(viewModel: AppViewModel) {
             step = state.freezeConfirmStep,
             onConfirm = viewModel::confirmFreeze,
             onDismiss = viewModel::dismissFreeze,
+        )
+    }
+
+    if (state.update.visible) {
+        UpdateDialog(
+            state = state.update,
+            onDownload = viewModel::downloadUpdate,
+            onInstall = viewModel::installUpdate,
+            onDismiss = viewModel::dismissUpdateDialog,
         )
     }
 

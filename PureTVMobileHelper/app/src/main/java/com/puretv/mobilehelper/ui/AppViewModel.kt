@@ -8,6 +8,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.puretv.mobilehelper.data.AdbRepository
 import com.puretv.mobilehelper.data.AppDetails
+import com.puretv.mobilehelper.data.AppUpdate
+import com.puretv.mobilehelper.data.AppUpdater
 import com.puretv.mobilehelper.data.CaptivePortalPreset
 import com.puretv.mobilehelper.data.DeviceInfo
 import com.puretv.mobilehelper.data.DeviceStore
@@ -54,6 +56,23 @@ sealed interface ConnectionUiState {
 sealed interface UiEvent {
     data class Message(val text: String, val detail: String? = null) : UiEvent
     data class Paired(val host: String, val connectPort: Int) : UiEvent
+    data class InstallPackage(val file: java.io.File) : UiEvent
+}
+
+data class UpdateUiState(
+    val currentVersion: String = "",
+    val currentVersionCode: Long = 0,
+    val available: AppUpdate? = null,
+    val visible: Boolean = false,
+    val checking: Boolean = false,
+    val downloading: Boolean = false,
+    val downloadedBytes: Long = 0,
+    val totalBytes: Long = 0,
+    val readyToInstall: Boolean = false,
+    val error: String? = null,
+) {
+    val progress: Float?
+        get() = if (totalBytes > 0) (downloadedBytes.toFloat() / totalBytes).coerceIn(0f, 1f) else null
 }
 
 data class SpeedTestUiState(
@@ -115,6 +134,7 @@ data class UiState(
     val uninstallTarget: InstalledApp? = null,
     val freezeTarget: InstalledApp? = null,
     val freezeConfirmStep: Int = 0,
+    val update: UpdateUiState = UpdateUiState(),
 ) {
     val connectedDevice: DeviceInfo?
         get() = (connection as? ConnectionUiState.Connected)?.device
@@ -149,6 +169,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val deviceStore = DeviceStore(application.applicationContext)
     private val lanDiscovery = LanDiscovery(application.applicationContext)
     private val networkSpeedTest = NetworkSpeedTest()
+    private val appUpdater = AppUpdater(application.applicationContext)
 
     private val recent = deviceStore.mostRecent()
     private val _state = MutableStateFlow(
@@ -169,6 +190,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 _state.update { it.copy(discovery = discovery) }
             }
         }
+        _state.update {
+            it.copy(
+                update = it.update.copy(
+                    currentVersion = appUpdater.currentVersionName(),
+                    currentVersionCode = appUpdater.currentVersionCode(),
+                )
+            )
+        }
+        checkForUpdates(manual = false)
     }
 
     private var appsRequestId = 0
@@ -179,6 +209,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private var sentRemoteInputText = ""
     private var remoteInputSyncJob: Job? = null
     private var remoteKeyJob: Job? = null
+    private var updateCheckJob: Job? = null
+    private var updateDownloadJob: Job? = null
 
     fun connect(hostInput: String, portInput: String) {
         if (_state.value.connection is ConnectionUiState.Connecting) return
@@ -927,6 +959,104 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
+    // region App updates
+
+    fun checkForUpdates(manual: Boolean = false) {
+        if (updateCheckJob?.isActive == true) return
+        updateCheckJob = viewModelScope.launch {
+            updateUpdate { it.copy(checking = true, error = null) }
+            try {
+                val update = appUpdater.findUpdate()
+                if (update == null) {
+                    updateUpdate {
+                        it.copy(
+                            checking = false,
+                            available = null,
+                            visible = false,
+                            downloading = false,
+                            readyToInstall = false,
+                            error = null,
+                        )
+                    }
+                    if (manual) eventChannel.trySend(UiEvent.Message("已是最新版本"))
+                } else {
+                    updateUpdate {
+                        it.copy(
+                            checking = false,
+                            available = update,
+                            visible = true,
+                            downloading = false,
+                            readyToInstall = false,
+                            downloadedBytes = 0,
+                            totalBytes = update.apkSize,
+                            error = null,
+                        )
+                    }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (throwable: Throwable) {
+                updateUpdate { it.copy(checking = false, error = "检查更新失败，请确认网络后重试。") }
+                if (manual) {
+                    eventChannel.trySend(UiEvent.Message("检查更新失败", "请确认手机网络可用后再试。"))
+                }
+            }
+        }
+    }
+
+    fun downloadUpdate() {
+        val update = _state.value.update.available ?: return
+        val current = _state.value.update
+        if (current.downloading || current.readyToInstall) return
+        updateDownloadJob = viewModelScope.launch {
+            updateUpdate { it.copy(downloading = true, error = null, downloadedBytes = 0) }
+            try {
+                val file = appUpdater.download(update) { downloaded, total ->
+                    updateUpdate { it.copy(downloadedBytes = downloaded, totalBytes = total) }
+                }
+                updateUpdate {
+                    it.copy(
+                        downloading = false,
+                        readyToInstall = true,
+                        downloadedBytes = file.length(),
+                        totalBytes = file.length(),
+                    )
+                }
+                eventChannel.trySend(UiEvent.Message("新版本已下载", "点击“安装更新”完成安装。"))
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (throwable: Throwable) {
+                updateUpdate { it.copy(downloading = false, error = "下载失败，请检查网络后重试。") }
+            }
+        }
+    }
+
+    fun installUpdate() {
+        val current = _state.value.update
+        val version = current.available?.versionName ?: return
+        if (!current.readyToInstall) return
+        val file = appUpdater.apkFile(version)
+        if (!file.exists()) {
+            updateUpdate { it.copy(readyToInstall = false, error = "安装包已失效，请重新下载。") }
+            return
+        }
+        eventChannel.trySend(UiEvent.InstallPackage(file))
+    }
+
+    fun dismissUpdateDialog() {
+        updateDownloadJob?.cancel()
+        updateDownloadJob = null
+        updateUpdate {
+            it.copy(visible = false, downloading = false, downloadedBytes = 0, error = null)
+        }
+    }
+
+    private fun updateUpdate(transform: (UpdateUiState) -> UpdateUiState) {
+        _state.update { it.copy(update = transform(it.update)) }
+    }
+
+    // endregion
 
     override fun onCleared() {
         repository.closeNow()

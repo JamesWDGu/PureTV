@@ -72,7 +72,7 @@ jobs:
 
       - name: Test and build signed release
         working-directory: PureTVMobileHelper
-        run: ./gradlew :app:testDebugUnitTest :app:assembleRelease -PappVersionCode=${{ github.run_number }}
+        run: ./gradlew :app:testDebugUnitTest :app:assembleRelease
 
       - name: Verify and read release metadata
         id: meta
@@ -85,29 +85,53 @@ jobs:
           "$apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk | grep -q "CN=PureTV Mobile Helper"
           echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
           echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
-          tag="v${version_name}-b${version_code}"
+          tag="v${version_name}"
           if [ "${GITHUB_RUN_ATTEMPT}" != "1" ]; then
             tag="${tag}-a${GITHUB_RUN_ATTEMPT}"
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          cp app/build/outputs/apk/release/app-release.apk "${RUNNER_TEMP}/PureTV-${version_name}.apk"
+          echo "apk=${RUNNER_TEMP}/PureTV-${version_name}.apk" >> "$GITHUB_OUTPUT"
+
+      - name: Compose release notes
+        working-directory: .
+        run: |
+          notes="${RUNNER_TEMP}/release-notes.md"
+          awk -v v="${{ steps.meta.outputs.version_name }}" '
+            index($0, "## [" v "]") == 1 { capture = 1; next }
+            capture && index($0, "## [") == 1 { exit }
+            capture { print }
+          ' CHANGELOG.md > "$notes"
+          if [ ! -s "$notes" ]; then
+            printf '本版本未单独列出更新内容，详情见提交记录。\n' > "$notes"
+          fi
+          cat >> "$notes" <<EOF
+
+          ---
+
+          **版本**：${{ steps.meta.outputs.version_name }}（${{ steps.meta.outputs.version_code }}）
+          **安装包**：PureTV-${{ steps.meta.outputs.version_name }}.apk
+          **支持系统**：Android 6.0 及以上
+          **安装方式**：下载 APK 后在手机上打开并按提示安装；也可用 Obtainium 订阅本仓库。
+          EOF
+          cat "$notes"
 
       - name: Create draft release with APK
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.meta.outputs.tag }}
           VERSION_NAME: ${{ steps.meta.outputs.version_name }}
-          VERSION_CODE: ${{ steps.meta.outputs.version_code }}
+          APK: ${{ steps.meta.outputs.apk }}
+          NOTES_FILE: ${{ runner.temp }}/release-notes.md
         run: |
-          gh release create "$TAG" \
-            "PureTVMobileHelper/app/build/outputs/apk/release/app-release.apk" \
+          gh release create "$TAG" "$APK" \
             --target "$GITHUB_SHA" \
-            --title "PureTV ${VERSION_NAME} (build ${VERSION_CODE})" \
-            --generate-notes \
-            --prerelease \
+            --title "PureTV ${VERSION_NAME}" \
+            --notes-file "$NOTES_FILE" \
             --draft
 
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.meta.outputs.tag }}
-        run: gh release edit "$TAG" --draft=false --prerelease
+        run: gh release edit "$TAG" --draft=false
