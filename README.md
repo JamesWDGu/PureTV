@@ -1,6 +1,8 @@
-# PureTV 手机助手（PureTVMobileHelper）
+# PureTV
 
-用 Android 手机通过同一个 Wi-Fi 或路由器连接电视，安装、查看和管理电视应用，也能输入文字、
+单一 Android 工程：`app/` 是手机助手，电视端后续作为独立模块（如 `tv/`）加入同一构建。
+
+手机助手通过同一个 Wi-Fi 或路由器连接电视，安装、查看和管理电视应用，也能输入文字、
 遥控电视，以及调整自动校时和联网检测设置。不需要电脑或数据线。
 
 ## 功能
@@ -114,7 +116,6 @@
 ## 构建
 
 ```bash
-cd PureTVMobileHelper
 ./gradlew :app:assembleDebug
 ./gradlew :app:assembleRelease
 ```
@@ -204,6 +205,10 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
    - 按键轻震跟随手机系统设置。文字暂仅支持英文字母、数字和英文符号，中文及表情请用电视输入法。
 
 ## 代码结构
+
+根目录是一个 Gradle 工程：`app/` 为手机端模块；电视端加入时在根目录新增模块并在
+`settings.gradle.kts` 中 `include`。签名材料、截图和版本文件都在根目录统一管理。
+
 ```
 app/src/main/java/com/puretv/mobilehelper/
 ├── PureTvHelperApp.kt          # 配置持久化 ADB 身份

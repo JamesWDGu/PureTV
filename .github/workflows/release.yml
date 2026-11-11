@@ -46,14 +46,14 @@ jobs:
           KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
-          mkdir -p PureTVMobileHelper/signing
-          printf '%s' "$KEYSTORE_BASE64" | base64 -d > PureTVMobileHelper/signing/puretv-release.jks
+          mkdir -p signing
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > signing/puretv-release.jks
           {
             echo "storeFile=../signing/puretv-release.jks"
             echo "storePassword=$STORE_PASSWORD"
             echo "keyAlias=$KEY_ALIAS"
             echo "keyPassword=$KEY_PASSWORD"
-          } > PureTVMobileHelper/signing/signing.properties
+          } > signing/signing.properties
 
       - name: Ensure Android SDK packages
         run: |
@@ -71,12 +71,10 @@ jobs:
           }
 
       - name: Test and build signed release
-        working-directory: PureTVMobileHelper
         run: ./gradlew :app:testDebugUnitTest :app:assembleRelease
 
       - name: Verify and read release metadata
         id: meta
-        working-directory: PureTVMobileHelper
         run: |
           metadata=app/build/outputs/apk/release/output-metadata.json
           version_name=$(jq -r '.elements[0].versionName' "$metadata")

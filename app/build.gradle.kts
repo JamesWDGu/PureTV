@@ -11,7 +11,7 @@ val signingProperties = Properties().apply {
     if (localFile.exists()) localFile.inputStream().use(::load)
 }
 
-val appVersionName = (project.findProperty("appVersionName") as String?) ?: "1.0.0"
+val mobileVersionName = (project.findProperty("mobileVersionName") as String?) ?: "1.0.0"
 
 fun versionCodeOf(name: String): Int {
     val parts = name.removePrefix("v").split('.').map { it.toIntOrNull() ?: 0 }
@@ -39,9 +39,9 @@ android {
         applicationId = "com.puretv.mobilehelper"
         minSdk = 23
         targetSdk = 36
-        versionName = appVersionName
-        versionCode = (project.findProperty("appVersionCode") as String?)?.toIntOrNull()
-            ?: versionCodeOf(appVersionName)
+        versionName = mobileVersionName
+        versionCode = (project.findProperty("mobileVersionCode") as String?)?.toIntOrNull()
+            ?: versionCodeOf(mobileVersionName)
     }
 
     buildFeatures {

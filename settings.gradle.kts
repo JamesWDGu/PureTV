@@ -15,5 +15,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "PureTVMobileHelper"
+rootProject.name = "PureTV"
+
 include(":app")
+// 电视端加入时：include(":tv")

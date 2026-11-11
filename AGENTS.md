@@ -4,9 +4,9 @@
 
 ## 1. 仓库范围
 
-- `PureTVMobileHelper/` 是当前唯一已实现的模块：Android 手机客户端，通过局域网 ADB 连接
-  Android TV，管理 TV 应用，核心功能是发现、安装、冻结/解冻、卸载 APK，以及调整 NTP /
-  Captive Portal。
+- 仓库是一个 Gradle 单一工程：`app/` 为当前已实现的手机端模块，通过局域网 ADB 连接 Android TV，
+  管理 TV 应用，核心功能是发现、安装、冻结/解冻、卸载 APK，以及调整 NTP / Captive Portal。
+  电视端后续在根目录新增模块（如 `tv/`）并加入 `settings.gradle.kts`，共用根构建与版本/签名配置。
 - `PureTVStore/` 目前是空目录/占位目录。不要根据目录名猜测功能，也不要把实现错误地放进该目录。
 - 应用 ID：`com.puretv.mobilehelper`，界面语言为简体中文。
 - 技术栈：Kotlin + Jetpack Compose Material 3，单 Activity + ViewModel，无 Navigation 库。
@@ -129,7 +129,6 @@ UI 事件通过 `UiEvent`（`Message` / `Paired`）发给 `PureTvApp` 的 Snackb
 ## 4. 构建与验证
 
 ```bash
-cd PureTVMobileHelper
 ./gradlew :app:assembleDebug
 ./gradlew :app:lintDebug
 ./gradlew :app:assembleRelease
@@ -137,7 +136,7 @@ cd PureTVMobileHelper
 ```
 
 - Debug 产物：`app/build/outputs/apk/debug/app-debug.apk`
-- Release：本机存在 `PureTVMobileHelper/signing/signing.properties` 时输出已签名的
+- Release：本机存在 `signing/signing.properties` 时输出已签名的
   `app/build/outputs/apk/release/app-release.apk`；缺失时回退为未签名的
   `app-release-unsigned.apk`。`signing/`、keystore 与密码**不要**提交到仓库；签名目录包含
   `puretv-release.jks` 和 `signing.properties`，整体备份即可。
@@ -181,7 +180,7 @@ README 界面预览图必须使用模拟器/占位数据并脱敏后放到 `docs
 
 ### README 界面截图
 
-- 截图目录：`PureTVMobileHelper/docs/images/`，由 `README.md` 的“界面预览”章节引用。
+- 截图目录：`docs/images/`，由根目录 `README.md` 的“界面预览”章节引用。
 - 当前覆盖：首页、自动发现、配对、设备概览、应用列表/冻结、应用详情、系统应用冻结两次确认、
   安装进度、控制面板功能列表、自动校时、联网检测（各页一键测速）、遥控输入页、重命名、版本更新对话框。
 - 截图统一为 480px 宽的 PNG；使用模拟器、占位名称和保留地址（如 `10.0.2.x`），隐藏设备序列号。
@@ -236,7 +235,7 @@ README 界面预览图必须使用模拟器/占位数据并脱敏后放到 `docs
 - 遥控输入：`input keyevent` 只允许 `INPUT_KEYS` 白名单；`input text` 必须 shellQuote 且空格
   编码 `%s`。手动发送与实时输入完全独立，读取不得触发发送或设置实时基线。实时输入只重放
   本轮变化尾部，不得整框清空重输；字符预检必须先于删除，失败时不展示原始堆栈。
-- 版本号只在 `PureTVMobileHelper/gradle.properties` 的 `appVersionName` 修改；`versionCode` 固定按
+- 版本号只在根目录 `gradle.properties` 的 `mobileVersionName` 修改；`versionCode` 固定按
   `MAJOR × 10000 + MINOR × 100 + PATCH` 推导。修复递增 PATCH、功能递增 MINOR、不兼容递增 MAJOR；
   发布前同步更新 `CHANGELOG.md` 的对应章节。
 - 更新检查与下载必须异步，不阻塞连接、应用管理和遥控；自动检查失败静默，只有手动检查才提示。
@@ -341,7 +340,7 @@ grep -rnE '/Users/|/home/|BEGIN .*PRIVATE KEY|api[_-]?key|secret|token' \
 
 ## 9. 修改检查清单
 
-1. 先读 `PureTVMobileHelper/README.md` 和本文件，再读相关源码。
+1. 先读根目录 `README.md` 和本文件，再读相关源码。
 2. 多文件改动先列出方案；保持现有模式，不引入第二套架构。
 3. 改 ADB 行为时同时检查 `AdbRepository`、`AppViewModel`、`FriendlyError` 和相关 UI 状态；
    冻结/解冻还要验证列表仍能看到已冻结应用。
