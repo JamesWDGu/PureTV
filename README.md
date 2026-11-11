@@ -1,6 +1,6 @@
 # PureTV
 
-单一 Android 工程：`app/` 是手机助手，电视端后续作为独立模块（如 `tv/`）加入同一构建。
+单一 Android 工程：手机助手位于 `app/` 模块。电视端应用使用独立仓库，不并入本工程。
 
 手机助手通过同一个 Wi-Fi 或路由器连接电视，安装、查看和管理电视应用，也能输入文字、
 遥控电视，以及调整自动校时和联网检测设置。不需要电脑或数据线。
@@ -206,8 +206,8 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## 代码结构
 
-根目录是一个 Gradle 工程：`app/` 为手机端模块；电视端加入时在根目录新增模块并在
-`settings.gradle.kts` 中 `include`。签名材料、截图和版本文件都在根目录统一管理。
+根目录是 Gradle 工程，`app/` 为唯一模块（手机助手）。签名材料、截图和版本文件都在根目录
+统一管理；电视端应用在独立仓库维护。
 
 ```
 app/src/main/java/com/puretv/mobilehelper/

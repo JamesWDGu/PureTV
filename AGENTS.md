@@ -6,7 +6,7 @@
 
 - 仓库是一个 Gradle 单一工程：`app/` 为当前已实现的手机端模块，通过局域网 ADB 连接 Android TV，
   管理 TV 应用，核心功能是发现、安装、冻结/解冻、卸载 APK，以及调整 NTP / Captive Portal。
-  电视端后续在根目录新增模块（如 `tv/`）并加入 `settings.gradle.kts`，共用根构建与版本/签名配置。
+  电视端应用使用独立仓库，**不要**在本仓库新增电视模块或共用本仓库的发布/签名流程。
 - `PureTVStore/` 目前是空目录/占位目录。不要根据目录名猜测功能，也不要把实现错误地放进该目录。
 - 应用 ID：`com.puretv.mobilehelper`，界面语言为简体中文。
 - 技术栈：Kotlin + Jetpack Compose Material 3，单 Activity + ViewModel，无 Navigation 库。
