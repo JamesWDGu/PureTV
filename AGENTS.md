@@ -32,6 +32,8 @@
 - 只保留 Compose 编译器插件 `org.jetbrains.kotlin.plugin.compose`，版本必须与 Kotlin 对齐。
 - Kadb 的配对依赖 `com.github.Flyfish233:spake2-java` 发布在 JitPack。**不要删除**
   `settings.gradle.kts` 中的 `maven("https://jitpack.io")`。
+- 其他依赖：Bouncy Castle（ADB 主机证书）；Compose / Activity / Lifecycle / Coroutines
+  由 Compose BOM 与显式版本管理，见 `app/build.gradle.kts`。
 - 构建与测试需要 JDK 25：Kadb 2.1.5 的 JVM 字节码为 Java 25，`testDebugUnitTest` 必须在
   JDK 25 上运行（Android 运行时不受影响）；另需 Android SDK Platform 37、Build Tools 36+。
 - `targetSdk` 保持 36。升级到 37（Android 17）前必须实现 `ACCESS_LOCAL_NETWORK` 运行时权限，
@@ -123,6 +125,33 @@
     `cacheDir/updates/PureTV-<版本>.apk` 并回报进度，界面不阻塞；下载完成后经 `FileProvider`
     调用系统安装器，缺少“安装未知应用”权限时先跳系统设置。不得静默安装或后台自动安装。
 
+### 设备记录存储
+
+路径 `shared_prefs/puretv_devices.xml`，每台设备一条 JSON：
+
+```json
+{
+  "serial": "设备序列号（可能为空）",
+  "host": "192.168.1.100",
+  "port": 5555,
+  "name": "自动识别的显示名称",
+  "customName": "客厅电视",
+  "lastConnectedAt": 1760000000000,
+  "networkDefaults": {
+    "ntp": "time.android.com",
+    "http": "http://connectivitycheck.gstatic.com/generate_204",
+    "https": "https://connectivitycheck.gstatic.com/generate_204",
+    "fallback": "http://www.google.com/generate_204",
+    "otherFallback": "http://connectivitycheck.gstatic.com/generate_204",
+    "server": "connectivitycheck.gstatic.com",
+    "mode": "1"
+  }
+}
+```
+
+删除设备时 `networkDefaults` 级联删除；新增设备级字段只能扩展该记录，不得另建 Preferences。
+ADB 私钥单独保存在 `files/adb/adbkey`。
+
 UI 事件通过 `UiEvent`（`Message` / `Paired`）发给 `PureTvApp` 的 Snackbar。详情 BottomSheet
 中的启动/强停/冻结/解冻操作必须先关闭 Sheet，否则 Snackbar 会被模态层遮挡。
 
@@ -152,6 +181,18 @@ UI 事件通过 `UiEvent`（`Message` / `Paired`）发给 `PureTvApp` 的 Snackb
   ADB/UI 行为仍需实际运行或 emulator smoke test。
 - Lint 预期剩余警告：`OldTargetApi`、Gradle/AGP 有新版本、Kadb/BouncyCastle 的
   `TrustAllX509TrustManager`。最后一项是 ADB 配对协议要求，见第 6 节，不要“修复”。
+
+发布所需 Secrets（放入 `release` Environment，不要放仓库级）：
+
+| Secret | 内容 |
+| --- | --- |
+| `RELEASE_KEYSTORE_BASE64` | `base64 -i signing/puretv-release.jks` 的输出 |
+| `RELEASE_STORE_PASSWORD` | keystore 密码 |
+| `RELEASE_KEY_ALIAS` | `puretv` |
+| `RELEASE_KEY_PASSWORD` | 密钥密码 |
+
+工作流先创建带 APK 的草稿再发布，兼容 immutable releases；资产名 `PureTV-<version>.apk`
+可被 Obtainium 识别。重跑时 tag 追加 `-a<次数>`。
 
 推荐 smoke test（不依赖真实 TV）：
 
