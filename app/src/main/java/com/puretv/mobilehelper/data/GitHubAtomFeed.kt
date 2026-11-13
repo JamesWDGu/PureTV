@@ -25,6 +25,17 @@ private fun htmlToText(html: String): String = html
     .replace("&gt;", ">")
     .replace("&quot;", "\"")
     .replace("&#39;", "'")
+    .replace(Regex("&#(x?[0-9a-fA-F]+);")) { match ->
+        val raw = match.groupValues[1]
+        val code = if (raw.startsWith("x", ignoreCase = true)) {
+            raw.drop(1).toIntOrNull(16)
+        } else {
+            raw.toIntOrNull()
+        }
+        code?.takeIf { it in 1..0x10FFFF }
+            ?.let { String(Character.toChars(it)) }
+            ?: match.value
+    }
     .replace(Regex("(?i)<br\\s*/?>"), "\n")
     .replace(Regex("(?i)</(p|h[1-6]|li|ul|ol)>"), "\n")
     .replace(Regex("<[^>]+>"), "")
