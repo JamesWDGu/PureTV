@@ -353,7 +353,7 @@ private fun ControlPanelCard(onOpen: () -> Unit) {
             Text("设备控制面板", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(4.dp))
             Text(
-                "用手机遥控电视、输入文字，也可安装电视应用、调整自动校时和联网检测设置。",
+                "用手机遥控电视、输入文字，也可安装电视应用与商店、调整自动校时和联网检测设置。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

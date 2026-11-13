@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Build
 import androidx.core.content.FileProvider
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -27,6 +28,20 @@ data class StoreRelease(
 class StoreInstaller(private val context: Context) {
 
     suspend fun findLatest(): StoreRelease = withContext(Dispatchers.IO) {
+        val apiFailure = try {
+            Result.success(fetchApiRelease())
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (error: Throwable) {
+            Result.failure(error)
+        }
+        apiFailure.getOrNull()
+            ?: fetchAtomRelease()
+            ?: throw (apiFailure.exceptionOrNull()
+                ?: IOException("商店还没有发布可安装的版本，请稍后再试。"))
+    }
+
+    private fun fetchApiRelease(): StoreRelease? {
         val response = request(LATEST_RELEASE_URL)
         if (response.code == HttpURLConnection.HTTP_NOT_FOUND) {
             throw IOException("商店还没有发布可安装的版本，请稍后再试。")
@@ -34,8 +49,14 @@ class StoreInstaller(private val context: Context) {
         if (response.code != HttpURLConnection.HTTP_OK) {
             throw IOException("暂时无法获取商店版本（${response.code}），请稍后重试。")
         }
-        parseStoreRelease(response.body)
+        return parseStoreRelease(response.body)
             ?: throw IOException("商店的最新版本里没有找到安装包，请稍后再试。")
+    }
+
+    private fun fetchAtomRelease(): StoreRelease? {
+        val response = request(atomUrl(STORE_REPO), "application/atom+xml")
+        if (response.code != HttpURLConnection.HTTP_OK) return null
+        return storeReleaseFromAtom(response.body)
     }
 
     suspend fun download(
@@ -92,13 +113,16 @@ class StoreInstaller(private val context: Context) {
         file,
     )
 
-    private fun request(url: String): Response {
+    private fun request(
+        url: String,
+        accept: String = "application/vnd.github+json",
+    ): Response {
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = 15_000
             readTimeout = 20_000
             instanceFollowRedirects = true
             setRequestProperty("User-Agent", USER_AGENT)
-            setRequestProperty("Accept", "application/vnd.github+json")
+            setRequestProperty("Accept", accept)
         }
         return try {
             val code = connection.responseCode
@@ -115,9 +139,11 @@ class StoreInstaller(private val context: Context) {
     private companion object {
         const val USER_AGENT = "PureTV-MobileHelper"
         const val LATEST_RELEASE_URL =
-            "https://api.github.com/repos/JamesWDGu/PureTVStore/releases/latest"
+            "https://api.github.com/repos/$STORE_REPO/releases/latest"
     }
 }
+
+private const val STORE_REPO = "JamesWDGu/PureTVStore"
 
 internal fun parseStoreRelease(body: String): StoreRelease? {
     val json = JSONObject(body)
@@ -144,5 +170,17 @@ internal fun parseStoreRelease(body: String): StoreRelease? {
         notes = notes,
         apkUrl = chosen.optString("browser_download_url"),
         apkSize = chosen.optLong("size"),
+    )
+}
+
+/** Builds the fixed-asset release from the Atom feed when the GitHub API is rate limited. */
+internal fun storeReleaseFromAtom(xml: String): StoreRelease? {
+    val release = parseLatestAtomRelease(xml) ?: return null
+    return StoreRelease(
+        versionName = release.version,
+        notes = release.notes,
+        apkUrl = "https://github.com/$STORE_REPO/releases/download/${release.tag}/" +
+            "PureTVStore-${release.version}.apk",
+        apkSize = 0L,
     )
 }

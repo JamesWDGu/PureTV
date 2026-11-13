@@ -71,7 +71,7 @@ class AppUpdater(private val context: Context) {
     }
 
     private fun fetchAtomRelease(): AppUpdate? {
-        val response = request(ATOM_URL, "application/atom+xml")
+        val response = request(atomUrl(UPDATER_REPO), "application/atom+xml")
         if (response.code != HttpURLConnection.HTTP_OK) return null
         return parseAtomRelease(response.body)
     }
@@ -188,7 +188,6 @@ class AppUpdater(private val context: Context) {
         const val USER_AGENT = "PureTV-MobileHelper"
         const val LATEST_RELEASE_URL =
             "https://api.github.com/repos/$UPDATER_REPO/releases/latest"
-        const val ATOM_URL = "https://github.com/$UPDATER_REPO/releases.atom"
     }
 }
 
@@ -196,30 +195,12 @@ private const val UPDATER_REPO = "JamesWDGu/PureTVMobileHelper"
 
 /** Parses the first entry of GitHub's releases Atom feed; no API quota is used. */
 internal fun parseAtomRelease(xml: String): AppUpdate? {
-    val entry = Regex("<entry>(.*?)</entry>", RegexOption.DOT_MATCHES_ALL)
-        .find(xml)?.groupValues?.get(1) ?: return null
-    val tag = Regex("/releases/tag/([^\"]+)").find(entry)?.groupValues?.get(1) ?: return null
-    val version = parseAppVersion(tag)?.name ?: return null
-    val encodedNotes = Regex("<content[^>]*>(.*?)</content>", RegexOption.DOT_MATCHES_ALL)
-        .find(entry)?.groupValues?.get(1).orEmpty()
+    val release = parseLatestAtomRelease(xml) ?: return null
     return AppUpdate(
-        versionName = version,
-        notes = plainReleaseNotes(htmlToText(encodedNotes)),
-        apkUrl = "https://github.com/$UPDATER_REPO/releases/download/$tag/PureTV-$version.apk",
+        versionName = release.version,
+        notes = plainReleaseNotes(release.notes),
+        apkUrl = "https://github.com/$UPDATER_REPO/releases/download/${release.tag}/" +
+            "PureTV-${release.version}.apk",
         apkSize = 0L,
     )
 }
-
-private fun htmlToText(html: String): String = html
-    .replace("&lt;", "<")
-    .replace("&gt;", ">")
-    .replace("&quot;", "\"")
-    .replace("&#39;", "'")
-    .replace(Regex("(?i)<br\\s*/?>"), "\n")
-    .replace(Regex("(?i)</(p|h[1-6]|li|ul|ol)>"), "\n")
-    .replace(Regex("<[^>]+>"), "")
-    .replace("&nbsp;", " ")
-    .replace("&amp;", "&")
-    .replace(Regex("[ \\t]+"), " ")
-    .replace(Regex("\\n{3,}"), "\n\n")
-    .trim()

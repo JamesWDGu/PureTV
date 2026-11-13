@@ -43,6 +43,12 @@ enum class ControlPanelFeature(
     val description: String,
     val icon: ImageVector,
 ) {
+    STORE(
+        id = "store",
+        title = "安装 PureTV 商店",
+        description = "在电视上安装应用商店，之后可直接安装和更新应用",
+        icon = Icons.Default.ShoppingCart,
+    ),
     NTP(
         id = "ntp",
         title = "自动校时",
@@ -60,12 +66,6 @@ enum class ControlPanelFeature(
         title = "遥控输入",
         description = "手动发送、实时输入与遥控按键",
         icon = Icons.Default.Edit,
-    ),
-    STORE(
-        id = "store",
-        title = "安装 PureTV 商店",
-        description = "在电视上安装应用商店，之后可直接安装和更新应用",
-        icon = Icons.Default.ShoppingCart,
     );
 
     companion object {

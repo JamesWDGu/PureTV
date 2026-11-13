@@ -132,7 +132,9 @@
 16. 安装 PureTV 商店：`StoreInstaller` 读取 `JamesWDGu/PureTVStore` 的 `releases/latest`，优先选择
     `PureTVStore-*.apk`，下载到 `cacheDir/stores/PureTVStore-<版本>.apk`，经
     `FileProvider`（`stores/` 路径）与 `AdbRepository.install` 安装到当前电视；页面只展示版本、
-    下载进度和安装状态，不自动安装。商店本身在电视上读取 `store/apps.json` 并安装/更新开源应用。
+    下载进度和安装状态，不自动安装。GitHub 接口限流（403/429）或解析失败时改用
+    `releases.atom`（无配额）并推导 `PureTVStore-<版本>.apk` 下载地址，与手机端更新检查共用
+    `GitHubAtomFeed.kt`。商店本身在电视上读取 `store/apps.json` 并安装/更新开源应用。
 
 ### 设备记录存储
 
@@ -284,7 +286,8 @@ README 界面预览图必须使用模拟器/占位数据并脱敏后放到 `docs
   `DeviceControlScreen` 的 `when (openFeature)` 路由里加分支。不要把所有功能堆在列表页或一个
   巨型文件里；列表页只负责展示与导航。
 - 安装 PureTV 商店只从 `JamesWDGu/PureTVStore` 的正式 Release 获取 APK，不得改为其他仓库或
-  本地内置 APK；下载文件必须写 `cacheDir/stores/` 并通过 `FileProvider` 交给 ADB 安装。
+  本地内置 APK；GitHub API 受限时必须回退到 `releases.atom`，不能只显示错误。下载文件必须写
+  `cacheDir/stores/` 并通过 `FileProvider` 交给 ADB 安装。
   电视上是否已安装以 `com.puretv.store` 包名为准，不得凭下载成功判断已安装。
 - 测速属于功能页职责：列表页不放测速/跨功能入口。各功能页的“一键测速”是唯一入口；不要自动
   测速、后台定时测速或把结果写入设备记录。
