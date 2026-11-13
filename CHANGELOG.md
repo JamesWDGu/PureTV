@@ -1,8 +1,14 @@
 # 更新日志
 
 版本规则：`MAJOR.MINOR.PATCH`。修复缺陷递增 PATCH，新增功能递增 MINOR，不兼容变更递增 MAJOR。
-版本号只在 `gradle.properties` 的 `appVersionName` 修改，版本代号自动推导为
+版本号只在 `gradle.properties` 的 `mobileVersionName` 修改，版本代号自动推导为
 `MAJOR × 10000 + MINOR × 100 + PATCH`。
+
+## [1.1.3] - 2026-11-12
+
+### 修复
+
+- 仓库更名为 PureTVMobileHelper，应用内检查更新改用新仓库地址，不再依赖旧地址跳转。
 
 ## [1.1.2] - 2026-11-11
 
