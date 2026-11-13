@@ -124,7 +124,9 @@
     会暂停实时输入，音量键不暂停，避免继续用旧位置改字。
     原生按键按点击顺序排队；文字模式切换不能丢弃已接受的按键，仅连接对象变化才作废旧按键。
 15. 应用更新：启动时异步检查一次 GitHub `releases/latest`，只提示比当前 `versionName` 更新的正式
-    Release；手动“检查更新”才显示无更新/失败提示。下载在独立协程中流式写入
+    Release；手动“检查更新”才显示无更新/失败提示。GitHub API 限流（403/429）或解析失败时，
+    回退到 `releases.atom`（无配额）读取最新 tag，并按固定命名 `PureTV-<版本>.apk` 构造下载地址。
+    下载在独立协程中流式写入
     `cacheDir/updates/PureTV-<版本>.apk` 并回报进度，界面不阻塞；下载完成后经 `FileProvider`
     调用系统安装器，缺少“安装未知应用”权限时先跳系统设置。不得静默安装或后台自动安装。
 16. 安装 PureTV 商店：`StoreInstaller` 读取 `JamesWDGu/PureTVStore` 的 `releases/latest`，优先选择
