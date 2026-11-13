@@ -50,6 +50,7 @@
 | `data/RemoteTextEdit.kt` | 实时输入变化范围与可打印 ASCII 预检，必须在任何 DEL 之前完成 |
 | `data/VersionInfo.kt` | 版本号解析、比较与 `versionCode` 推导规则 |
 | `data/AppUpdater.kt` | 读取 GitHub 最新 Release、带进度下载 APK、提供安装 Intent |
+| `data/StoreInstaller.kt` | 读取 PureTVStore 最新 Release、下载商店 APK、提供 FileProvider Uri |
 | `data/LanDiscovery.kt` | 用户触发的 mDNS 发现 + 私有 IPv4 `/24` 的 5555 端口扫描 |
 | `data/NetworkControl.kt` | NTP / Captive Portal 设置模型、预设列表、匹配规则 |
 | `data/NetworkSpeedTest.kt` | 手机侧 SNTP / HTTP 测速实现 |
@@ -66,6 +67,7 @@
 | `ui/screens/NtpControlPage.kt` | 自动校时功能页（NTP）：当前/原设置、可选服务器、测速、应用/恢复 |
 | `ui/screens/CaptivePortalControlPage.kt` | 联网检测功能页：当前/原设置、可选检测地址、测速、应用/恢复 |
 | `ui/screens/RemoteInputControlPage.kt` | 遥控输入功能页：独立的手动发送/实时输入模式、遥控按键 |
+| `ui/screens/StoreInstallPage.kt` | 安装 PureTV 商店功能页：版本、下载进度、安装入口 |
 | `ui/screens/RemoteKeypad.kt` | 遥控/数字/字母面板、大小写与空格/删除、系统按键轻震 |
 | `ui/UpdateDialog.kt` | 更新提示框：当前/新版本、更新说明、下载进度与安装入口 |
 | `ui/screens/DeviceScreen.kt` | 设备信息、控制面板入口、安装卡片、应用列表、冻结状态、详情 BottomSheet |
@@ -97,7 +99,8 @@
    卸载用 `Kadb.uninstall()`。
 11. 设备控制面板是**功能列表**：`ControlPanelFeature` 注册表（`ControlPanelCommon.kt`）定义标题/
     描述/图标，`DeviceControlScreen` 渲染列表并路由到各功能页（`NtpControlPage`、
-    `CaptivePortalControlPage`）。读取 `ntp_server` 与 `captive_portal_*` 全局设置；首次打开时把
+    `CaptivePortalControlPage`、`RemoteInputControlPage`、`StoreInstallPage`）。读取 `ntp_server` 与
+    `captive_portal_*` 全局设置；首次打开时把
     当前值写进该设备在 `DeviceStore` 中的 `networkDefaults` 字段，列表用“（原设置）”标注基线。
     应用预设只写对应 settings key，不修改 `captive_portal_mode`；恢复原设置按基线 put/delete 对应 key。
 12. 测速是**功能页职责**：控制面板列表不放测速入口，只负责展示与导航。每个功能页顶部“一键测速”
@@ -124,6 +127,10 @@
     Release；手动“检查更新”才显示无更新/失败提示。下载在独立协程中流式写入
     `cacheDir/updates/PureTV-<版本>.apk` 并回报进度，界面不阻塞；下载完成后经 `FileProvider`
     调用系统安装器，缺少“安装未知应用”权限时先跳系统设置。不得静默安装或后台自动安装。
+16. 安装 PureTV 商店：`StoreInstaller` 读取 `JamesWDGu/PureTVStore` 的 `releases/latest`，优先选择
+    `PureTVStore-*.apk`，下载到 `cacheDir/stores/PureTVStore-<版本>.apk`，经
+    `FileProvider`（`stores/` 路径）与 `AdbRepository.install` 安装到当前电视；页面只展示版本、
+    下载进度和安装状态，不自动安装。商店本身在电视上读取 `store/apps.json` 并安装/更新开源应用。
 
 ### 设备记录存储
 
@@ -208,12 +215,14 @@ UI 事件通过 `UiEvent`（`Message` / `Paired`）发给 `PureTvApp` 的 Snackb
 8. 重命名已保存设备：列表/设备页/控制面板标题同步更新；重启或重连后保留；留空恢复自动名称。
 9. 打开“设备控制面板”：确认功能列表只显示功能入口（NTP / Captive Portal，无测速栏）；进入各
    功能页点击“一键测速”，确认只测本页预设、各行显示延迟/204/失败，且结果在进程重启后不保留。
-10. 遥控输入页：手动模式编辑不发送，发送每次追加草稿、读取只更新手机；提示语不回填。
+10. 控制面板进入“安装 PureTV 商店”：确认显示最新版本与下载/安装进度；安装完成后电视应用列表
+    出现 `com.puretv.store`，打开商店能看到内置应用列表。
+11. 遥控输入页：手动模式编辑不发送，发送每次追加草稿、读取只更新手机；提示语不回填。
     实时模式不显示手动按钮，只改本轮输入且保留 TV 原文；切换不发命令、手动草稿独立保留。
     不支持的字符必须在任何删除前被拦截，输入异常不得把 TV 堆栈展示到 UI。
     数字/字母键必须在两种文字模式下都直接发往电视，手机草稿保持不变；辅助键同样发原生事件。
     轻震遵从系统设置；无实体震感时可查系统振动记录，不得将模拟器记录宣称为实机手感验证。
-11. 真实 TV 还需验证：首次授权弹窗、安装后启动、卸载、Android 11+ 配对握手、mDNS 发现、
+12. 真实 TV 还需验证：首次授权弹窗、安装后启动、卸载、Android 11+ 配对握手、mDNS 发现、
     NTP/Captive Portal 修改是否生效、测速结果与实际链路差异、遥控输入中文/光标场景。
 
 不要把包含真实设备序列号、真实局域网 IP、账号信息的截图、`adb devices` 输出、logcat 提交到仓库。
@@ -271,6 +280,9 @@ README 界面预览图必须使用模拟器/占位数据并脱敏后放到 `docs
 - 新增控制面板功能必须：在 `ControlPanelFeature` 注册表加条目、新建独立功能页文件、在
   `DeviceControlScreen` 的 `when (openFeature)` 路由里加分支。不要把所有功能堆在列表页或一个
   巨型文件里；列表页只负责展示与导航。
+- 安装 PureTV 商店只从 `JamesWDGu/PureTVStore` 的正式 Release 获取 APK，不得改为其他仓库或
+  本地内置 APK；下载文件必须写 `cacheDir/stores/` 并通过 `FileProvider` 交给 ADB 安装。
+  电视上是否已安装以 `com.puretv.store` 包名为准，不得凭下载成功判断已安装。
 - 测速属于功能页职责：列表页不放测速/跨功能入口。各功能页的“一键测速”是唯一入口；不要自动
   测速、后台定时测速或把结果写入设备记录。
 - 遥控输入：`input keyevent` 只允许 `INPUT_KEYS` 白名单；`input text` 必须 shellQuote 且空格

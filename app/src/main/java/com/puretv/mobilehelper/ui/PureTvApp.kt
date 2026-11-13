@@ -201,6 +201,9 @@ fun PureTvApp(viewModel: AppViewModel) {
             onSendRemoteInputNow = viewModel::sendRemoteInputNow,
             onPullRemoteInput = viewModel::pullRemoteInputText,
             onSendRemoteInputKey = viewModel::sendRemoteInputKey,
+            storeInstall = state.storeInstall,
+            onLoadStore = viewModel::loadStoreRelease,
+            onInstallStore = viewModel::installStoreOnTv,
         )
     }
 

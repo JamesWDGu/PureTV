@@ -46,6 +46,7 @@ import com.puretv.mobilehelper.data.NetworkSettings
 import com.puretv.mobilehelper.ui.ErrorPanel
 import com.puretv.mobilehelper.ui.NetworkControlUiState
 import com.puretv.mobilehelper.ui.RemoteInputMode
+import com.puretv.mobilehelper.ui.StoreInstallUiState
 
 /**
  * Device control panel: a list of features. Each feature opens its own page so future
@@ -71,6 +72,9 @@ fun DeviceControlScreen(
     onSendRemoteInputNow: () -> Unit,
     onPullRemoteInput: () -> Unit,
     onSendRemoteInputKey: (String) -> Unit,
+    storeInstall: StoreInstallUiState,
+    onLoadStore: (Boolean) -> Unit,
+    onInstallStore: () -> Unit,
 ) {
     LaunchedEffect(Unit) { onLoad() }
 
@@ -137,6 +141,12 @@ fun DeviceControlScreen(
                     onSendNow = onSendRemoteInputNow,
                     onPull = onPullRemoteInput,
                     onSendKey = onSendRemoteInputKey,
+                )
+            } else if (openFeature == ControlPanelFeature.STORE) {
+                StoreInstallPage(
+                    uiState = storeInstall,
+                    onLoad = onLoadStore,
+                    onInstall = onInstallStore,
                 )
             } else when {
                 uiState.loading && current == null -> {
@@ -214,7 +224,7 @@ private fun ControlPanelList(
             ) {
                 Column(Modifier.padding(14.dp)) {
                     Text(
-                        "选择要使用的功能：调整电视自动校时和联网检测设置，或向电视发送文字和遥控按键。",
+                        "选择要使用的功能：调整电视自动校时和联网检测设置，在电视上安装 PureTV 商店，或向电视发送文字和遥控按键。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -297,4 +307,6 @@ private fun ControlPanelFeature.currentValue(settings: NetworkSettings): String 
     }
 
     ControlPanelFeature.REMOTE_INPUT -> ""
+
+    ControlPanelFeature.STORE -> ""
 }

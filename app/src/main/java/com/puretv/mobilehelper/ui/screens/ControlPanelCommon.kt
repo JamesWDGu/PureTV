@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -59,6 +60,12 @@ enum class ControlPanelFeature(
         title = "遥控输入",
         description = "手动发送、实时输入与遥控按键",
         icon = Icons.Default.Edit,
+    ),
+    STORE(
+        id = "store",
+        title = "安装 PureTV 商店",
+        description = "在电视上安装应用商店，之后可直接安装和更新应用",
+        icon = Icons.Default.ShoppingCart,
     );
 
     companion object {

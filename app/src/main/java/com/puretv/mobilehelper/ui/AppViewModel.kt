@@ -27,6 +27,8 @@ import com.puretv.mobilehelper.data.NetworkSpeedTest
 import com.puretv.mobilehelper.data.OperationResult
 import com.puretv.mobilehelper.data.SavedDevice
 import com.puretv.mobilehelper.data.SpeedTestResult
+import com.puretv.mobilehelper.data.StoreInstaller
+import com.puretv.mobilehelper.data.StoreRelease
 import com.puretv.mobilehelper.data.UnsupportedAdbInputTextException
 import com.puretv.mobilehelper.data.validatedRemoteTextPrefix
 import com.puretv.mobilehelper.data.toFriendlyError
@@ -69,6 +71,20 @@ data class UpdateUiState(
     val downloadedBytes: Long = 0,
     val totalBytes: Long = 0,
     val readyToInstall: Boolean = false,
+    val error: String? = null,
+) {
+    val progress: Float?
+        get() = if (totalBytes > 0) (downloadedBytes.toFloat() / totalBytes).coerceIn(0f, 1f) else null
+}
+
+data class StoreInstallUiState(
+    val loading: Boolean = false,
+    val release: StoreRelease? = null,
+    val downloading: Boolean = false,
+    val installing: Boolean = false,
+    val downloadedBytes: Long = 0,
+    val totalBytes: Long = 0,
+    val onTv: Boolean = false,
     val error: String? = null,
 ) {
     val progress: Float?
@@ -135,6 +151,7 @@ data class UiState(
     val freezeTarget: InstalledApp? = null,
     val freezeConfirmStep: Int = 0,
     val update: UpdateUiState = UpdateUiState(),
+    val storeInstall: StoreInstallUiState = StoreInstallUiState(),
 ) {
     val connectedDevice: DeviceInfo?
         get() = (connection as? ConnectionUiState.Connected)?.device
@@ -170,6 +187,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val lanDiscovery = LanDiscovery(application.applicationContext)
     private val networkSpeedTest = NetworkSpeedTest()
     private val appUpdater = AppUpdater(application.applicationContext)
+    private val storeInstaller = StoreInstaller(application.applicationContext)
 
     private val recent = deviceStore.mostRecent()
     private val _state = MutableStateFlow(
@@ -211,6 +229,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private var remoteKeyJob: Job? = null
     private var updateCheckJob: Job? = null
     private var updateDownloadJob: Job? = null
+    private var storeInstallJob: Job? = null
 
     fun connect(hostInput: String, portInput: String) {
         if (_state.value.connection is ConnectionUiState.Connecting) return
@@ -1058,6 +1077,106 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     // endregion
 
+    // region PureTVStore installation
+
+    fun loadStoreRelease(force: Boolean = false) {
+        if (!force && _state.value.storeInstall.release != null) return
+        if (storeInstallJob?.isActive == true) return
+        storeInstallJob = viewModelScope.launch {
+            updateStoreInstall { it.copy(loading = true, error = null) }
+            try {
+                val release = storeInstaller.findLatest()
+                updateStoreInstall {
+                    it.copy(
+                        loading = false,
+                        release = release,
+                        onTv = it.onTv || storeInstalledOnTv(),
+                    )
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (throwable: Throwable) {
+                updateStoreInstall { it.copy(loading = false, error = storeErrorMessage(throwable)) }
+            }
+        }
+    }
+
+    fun installStoreOnTv() {
+        val current = _state.value.storeInstall
+        val release = current.release ?: return
+        if (current.downloading || current.installing) return
+        if (storeInstallJob?.isActive == true) return
+        if (_state.value.connection !is ConnectionUiState.Connected) {
+            eventChannel.trySend(UiEvent.Message("请先连接电视"))
+            return
+        }
+        storeInstallJob = viewModelScope.launch {
+            updateStoreInstall {
+                it.copy(
+                    downloading = true,
+                    downloadedBytes = 0,
+                    totalBytes = release.apkSize,
+                    error = null,
+                )
+            }
+            val file = try {
+                storeInstaller.download(release) { downloaded, total ->
+                    updateStoreInstall { it.copy(downloadedBytes = downloaded, totalBytes = total) }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (throwable: Throwable) {
+                updateStoreInstall {
+                    it.copy(downloading = false, error = storeErrorMessage(throwable))
+                }
+                eventChannel.trySend(
+                    UiEvent.Message("商店安装包下载失败", "请确认手机网络可用后重试。")
+                )
+                return@launch
+            }
+            updateStoreInstall {
+                it.copy(
+                    downloading = false,
+                    installing = true,
+                    downloadedBytes = file.length(),
+                    totalBytes = file.length(),
+                )
+            }
+            try {
+                repository.install(listOf(storeInstaller.apkUri(file)), InstallOptions()) { }
+                updateStoreInstall { it.copy(installing = false, onTv = true) }
+                eventChannel.trySend(
+                    UiEvent.Message("商店已安装到电视", "在电视上打开 PureTV 商店即可安装和更新应用。")
+                )
+                loadApps()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (throwable: Throwable) {
+                updateStoreInstall { it.copy(installing = false) }
+                val error = throwable.toInstallFailure()
+                eventChannel.trySend(UiEvent.Message(error.title, error.hint))
+            }
+        }
+    }
+
+    private fun updateStoreInstall(transform: (StoreInstallUiState) -> StoreInstallUiState) {
+        _state.update { it.copy(storeInstall = transform(it.storeInstall)) }
+    }
+
+    private fun storeInstalledOnTv(): Boolean =
+        _state.value.apps.any { it.packageName == STORE_PACKAGE }
+
+    private fun storeErrorMessage(throwable: Throwable): String {
+        val raw = throwable.message.orEmpty()
+        return if (raw.any { it in '\u4e00'..'\u9fff' }) {
+            raw
+        } else {
+            "获取商店最新版本失败，请确认手机网络后重试。"
+        }
+    }
+
+    // endregion
+
     override fun onCleared() {
         repository.closeNow()
         lanDiscovery.close()
@@ -1095,6 +1214,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private companion object {
         const val DEFAULT_ADB_PORT = 5555
+        const val STORE_PACKAGE = "com.puretv.store"
         const val MAX_SPEED_TEST_CONCURRENCY = 4
         const val REMOTE_INPUT_DEBOUNCE_MS = 350L
     }
