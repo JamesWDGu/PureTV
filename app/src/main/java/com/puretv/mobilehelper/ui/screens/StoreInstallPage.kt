@@ -41,7 +41,7 @@ fun StoreInstallPage(
     onInstall: () -> Unit,
 ) {
     val context = LocalContext.current
-    LaunchedEffect(Unit) { onLoad(false) }
+    LaunchedEffect(Unit) { onLoad(true) }
     val busy = uiState.downloading || uiState.installing
 
     LazyColumn(

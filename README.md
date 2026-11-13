@@ -87,6 +87,14 @@
     <td align="center"><sub>版本更新：当前/新版本、更新内容、下载进度与安装入口</sub></td>
     <td></td>
   </tr>
+  <tr>
+    <td width="50%" valign="top"><img width="100%" src="docs/images/16-store-install.png" alt="安装 PureTV 商店"></td>
+    <td width="50%"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>安装 PureTV 商店：获取最新版本并安装到电视</sub></td>
+    <td></td>
+  </tr>
 </table>
 
 ## 环境要求
