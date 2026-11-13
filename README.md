@@ -5,7 +5,7 @@
 
 ## 下载与更新
 
-- 最新版本：<https://github.com/JamesWDGu/PureTV/releases/latest>
+- 最新版本：<https://github.com/JamesWDGu/PureTVMobileHelper/releases/latest>
 - 支持 Obtainium：添加本仓库地址，选择 `PureTV-*.apk`。
 - 应用会自动检查更新，也可在首页点击“检查更新”；下载完成后由系统安装器确认安装。
 

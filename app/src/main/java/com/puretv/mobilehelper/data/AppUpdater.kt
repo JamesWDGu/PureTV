@@ -162,6 +162,6 @@ class AppUpdater(private val context: Context) {
     private companion object {
         const val USER_AGENT = "PureTV-MobileHelper"
         const val LATEST_RELEASE_URL =
-            "https://api.github.com/repos/JamesWDGu/PureTV/releases/latest"
+            "https://api.github.com/repos/JamesWDGu/PureTVMobileHelper/releases/latest"
     }
 }
