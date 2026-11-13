@@ -1016,9 +1016,16 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (throwable: Throwable) {
-                updateUpdate { it.copy(checking = false, error = "检查更新失败，请确认网络后重试。") }
+                val limited = throwable.message?.contains("403") == true ||
+                    throwable.message?.contains("429") == true
+                val hint = if (limited) {
+                    "GitHub 暂时限制了更新检查，请稍后重试，或前往发布页手动下载。"
+                } else {
+                    "请确认手机网络可用后再试。"
+                }
+                updateUpdate { it.copy(checking = false, error = "检查更新失败，$hint") }
                 if (manual) {
-                    eventChannel.trySend(UiEvent.Message("检查更新失败", "请确认手机网络可用后再试。"))
+                    eventChannel.trySend(UiEvent.Message("检查更新失败", hint))
                 }
             }
         }

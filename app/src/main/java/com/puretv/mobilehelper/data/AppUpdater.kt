@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import androidx.core.content.FileProvider
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -42,13 +43,37 @@ class AppUpdater(private val context: Context) {
 
     /** Returns an update only when the release is newer than the installed version. */
     suspend fun findUpdate(): AppUpdate? = withContext(Dispatchers.IO) {
+        val api = try {
+            Result.success(fetchApiRelease())
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (throwable: Throwable) {
+            Result.failure(throwable)
+        }
+        val update = api.getOrNull() ?: try {
+            fetchAtomRelease()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Throwable) {
+            null
+        }
+        if (update == null && api.isFailure) throw api.exceptionOrNull()!!
+        update?.takeIf { isNewerVersion(it.versionName, currentVersionName()) }
+    }
+
+    private fun fetchApiRelease(): AppUpdate? {
         val response = request(LATEST_RELEASE_URL)
-        if (response.code == HttpURLConnection.HTTP_NOT_FOUND) return@withContext null
+        if (response.code == HttpURLConnection.HTTP_NOT_FOUND) return null
         if (response.code != HttpURLConnection.HTTP_OK) {
             throw IOException("更新服务暂时不可用（${response.code}）")
         }
-        val update = parseRelease(response.body) ?: return@withContext null
-        if (isNewerVersion(update.versionName, currentVersionName())) update else null
+        return parseRelease(response.body)
+    }
+
+    private fun fetchAtomRelease(): AppUpdate? {
+        val response = request(ATOM_URL, "application/atom+xml")
+        if (response.code != HttpURLConnection.HTTP_OK) return null
+        return parseAtomRelease(response.body)
     }
 
     suspend fun download(
@@ -142,12 +167,12 @@ class AppUpdater(private val context: Context) {
 
     private class Response(val code: Int, val body: String)
 
-    private fun request(url: String): Response {
+    private fun request(url: String, accept: String = "application/vnd.github+json"): Response {
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = 10_000
             readTimeout = 15_000
             setRequestProperty("User-Agent", USER_AGENT)
-            setRequestProperty("Accept", "application/vnd.github+json")
+            setRequestProperty("Accept", accept)
         }
         return try {
             val code = connection.responseCode
@@ -162,6 +187,39 @@ class AppUpdater(private val context: Context) {
     private companion object {
         const val USER_AGENT = "PureTV-MobileHelper"
         const val LATEST_RELEASE_URL =
-            "https://api.github.com/repos/JamesWDGu/PureTVMobileHelper/releases/latest"
+            "https://api.github.com/repos/$UPDATER_REPO/releases/latest"
+        const val ATOM_URL = "https://github.com/$UPDATER_REPO/releases.atom"
     }
 }
+
+private const val UPDATER_REPO = "JamesWDGu/PureTVMobileHelper"
+
+/** Parses the first entry of GitHub's releases Atom feed; no API quota is used. */
+internal fun parseAtomRelease(xml: String): AppUpdate? {
+    val entry = Regex("<entry>(.*?)</entry>", RegexOption.DOT_MATCHES_ALL)
+        .find(xml)?.groupValues?.get(1) ?: return null
+    val tag = Regex("/releases/tag/([^\"]+)").find(entry)?.groupValues?.get(1) ?: return null
+    val version = parseAppVersion(tag)?.name ?: return null
+    val encodedNotes = Regex("<content[^>]*>(.*?)</content>", RegexOption.DOT_MATCHES_ALL)
+        .find(entry)?.groupValues?.get(1).orEmpty()
+    return AppUpdate(
+        versionName = version,
+        notes = plainReleaseNotes(htmlToText(encodedNotes)),
+        apkUrl = "https://github.com/$UPDATER_REPO/releases/download/$tag/PureTV-$version.apk",
+        apkSize = 0L,
+    )
+}
+
+private fun htmlToText(html: String): String = html
+    .replace("&lt;", "<")
+    .replace("&gt;", ">")
+    .replace("&quot;", "\"")
+    .replace("&#39;", "'")
+    .replace(Regex("(?i)<br\\s*/?>"), "\n")
+    .replace(Regex("(?i)</(p|h[1-6]|li|ul|ol)>"), "\n")
+    .replace(Regex("<[^>]+>"), "")
+    .replace("&nbsp;", " ")
+    .replace("&amp;", "&")
+    .replace(Regex("[ \\t]+"), " ")
+    .replace(Regex("\\n{3,}"), "\n\n")
+    .trim()
